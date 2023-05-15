@@ -64,7 +64,58 @@ const paginate = async (currentPage, PAGE_SIZE, pokemons) => {
   );
 }
 
+
 const setup = async () => {
+  $("#filterByType").empty();
+
+  // Fetch the list of all types from the API
+  let resType = await axios.get("https://pokeapi.co/api/v2/type");
+  let types = resType.data.results;
+
+  // Extract the type names and create checkboxes for each type
+  const filterTypes = types.map((pokemonType) => pokemonType.name);
+  filterTypes.forEach((type) => {
+    $("#filterByType").append(`
+    <input type="checkbox" id="${type}" class="typeCheckbox" name="type" value="${type}"/>  
+    <label for="${type}">${type}</label>  
+  `);
+  });
+
+  // Define a function to fetch the types of a given Pokemon
+  const getTypes = async (pokemonName) => {
+    const res = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonName}`);
+    return res.data.types.map((type) => type.type.name);
+  };
+
+  // Listen for changes to the selected checkboxes
+  $('body').on('change', '.typeCheckbox', async function (e) {
+    const $selectedTypes = $("input[name='type']:checked");
+    const selectedTypes = $selectedTypes.map(function () {
+      return this.value;
+    }).get();
+
+    if (selectedTypes.length > 0) {
+      // Filter the list of Pokemon based on the selected types
+      let filteredTypes = await Promise.all(
+        pokemons.map(async (pokemon) => {
+          const pokemonTypes = await getTypes(pokemon.name);
+          return selectedTypes.every((type) => pokemonTypes.includes(type))
+            ? pokemon
+            : null;
+        })
+      );
+      pokemons = filteredTypes.filter((p) => p !== null);
+    } else {
+      // If no types are selected, show all Pokemon
+      pokemons = response.data.results;
+    }
+
+    // Display the updated list of Pokemon
+    paginate(currentPage, PAGE_SIZE, pokemons);
+    let numPages = Math.ceil(pokemons.length / PAGE_SIZE);
+    updatePaginationDiv(currentPage, numPages);
+  });
+
   $('#pokeCards').empty();
   let response = await axios.get('https://pokeapi.co/api/v2/pokemon?offset=0&limit=810');
   pokemons = response.data.results;
@@ -122,7 +173,7 @@ const setup = async () => {
     //update pagination buttons
     updatePaginationDiv(currentPage, numPages)
   })
+
 }
 
-
-$(document).ready(setup)
+$(document).ready(setup);
