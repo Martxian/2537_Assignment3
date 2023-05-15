@@ -64,7 +64,6 @@ const paginate = async (currentPage, PAGE_SIZE, pokemons) => {
   );
 }
 
-
 const setup = async () => {
   $("#filterByType").empty();
 
@@ -88,33 +87,36 @@ const setup = async () => {
   };
 
   // Listen for changes to the selected checkboxes
-  $('body').on('change', '.typeCheckbox', async function (e) {
-    const $selectedTypes = $("input[name='type']:checked");
-    const selectedTypes = $selectedTypes.map(function () {
-      return this.value;
-    }).get();
+$('body').on('change', '.typeCheckbox', async function (e) {
+  const $selectedTypes = $("input[name='type']:checked");
+  const selectedTypes = $selectedTypes.map(function () {
+    return this.value;
+  }).get();
 
-    if (selectedTypes.length > 0) {
-      // Filter the list of Pokemon based on the selected types
-      let filteredTypes = await Promise.all(
-        pokemons.map(async (pokemon) => {
-          const pokemonTypes = await getTypes(pokemon.name);
-          return selectedTypes.every((type) => pokemonTypes.includes(type))
-            ? pokemon
-            : null;
-        })
-      );
-      pokemons = filteredTypes.filter((p) => p !== null);
-    } else {
-      // If no types are selected, show all Pokemon
-      pokemons = response.data.results;
-    }
+  let filteredPokemons = [];
 
-    // Display the updated list of Pokemon
-    paginate(currentPage, PAGE_SIZE, pokemons);
-    let numPages = Math.ceil(pokemons.length / PAGE_SIZE);
-    updatePaginationDiv(currentPage, numPages);
-  });
+  if (selectedTypes.length > 0) {
+    filteredPokemons = await Promise.all(
+      pokemons.map(async (pokemon) => {
+        const pokemonTypes = await getTypes(pokemon.name);
+        return selectedTypes.every((type) => pokemonTypes.includes(type))
+          ? pokemon
+          : null;
+      })
+    );
+  } else {
+    filteredPokemons = [...pokemons];
+  }
+
+  // Remove any null values from the filteredPokemons array
+  filteredPokemons = filteredPokemons.filter((p) => p !== null);
+
+  // Display the updated list of Pokemon
+  paginate(currentPage, PAGE_SIZE, filteredPokemons);
+  const numPages = Math.ceil(filteredPokemons.length / PAGE_SIZE);
+  updatePaginationDiv(currentPage, numPages);
+});
+
 
   $('#pokeCards').empty();
   let response = await axios.get('https://pokeapi.co/api/v2/pokemon?offset=0&limit=810');
